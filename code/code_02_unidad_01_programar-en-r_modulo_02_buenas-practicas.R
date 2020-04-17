@@ -1,4 +1,4 @@
-#### Programar en R - Buenas PrÃ¡cticas ####
+#### Programar en R - Buenas Prácticas ####
 # Fuente: https://rstats.wtf/
 #         https://peerj.com/collections/50-practicaldatascistats/+
 
@@ -7,21 +7,21 @@
 # Usar un IDE
 # No guardar el workspace
 # No cargar el workspace
-# Reiniciar la sesiÃ³n a menudo utilizando ctrl + shift + F10
+# Reiniciar la sesión a menudo utilizando ctrl + shift + F10
 # Ojo con rm(list = ls())
 # Archivos que demora crear: Modularizar y guardar por pasos. 
 # Automatizar flujos de trabajo
 
-#### 2. Proyectos como mÃ©todo          ####
-# MetodologÃ­a de trabajo basada en proyectos
+#### 2. Proyectos como método          ####
+# Metodología de trabajo basada en proyectos
 # Organizar proyectos intencionadamente 
 #   disciplina en el sistema de archivos
-#   intencionalidad de la direcciÃ³n de trabajo
+#   intencionalidad de la dirección de trabajo
 #   disciplina en las direcciones de archivos
-# Direccion de trabajo fija. AdiÃ³s setwd()
-# MÃ¡s ordenado
-# MÃ¡s replicable
-# Cosas fÃ¡ciles de encontrar
+# Direccion de trabajo fija. Adiós setwd()
+# Más ordenado
+# Más replicable
+# Cosas fáciles de encontrar
 # Carpetas separadas
 #   code
 #   raw
@@ -34,17 +34,18 @@ setwd("/Users/nacho/mis documentos/rata science/proyectos/encuestas/r/data")
 setwd("/Esta/direccion/solo/funciona/en/mi/comuputador")
 
 source("code/code_01_setup_02_libraries.R")
+source(here("code","code_01_setup_02_libraries.R"))
 
 x = c(1:100)
 y = c(1:100)
 
 library(readr)
 
-write_rds(x, "data/x.rds") # .RData
-write_rds(y, "data/y.rds")
+write_rds(x, here("data","x.rds")) # .RData
+write_rds(y, here("data","y.rds"))
 
-x = read_rds("data/x.rds")
-y = read_rds("data/y.rds")
+x = read_rds(here("data","x.rds"))
+y = read_rds(here("data","y.rds"))
 
 library(tibble)
 library(magrittr)
@@ -55,9 +56,9 @@ tibble(x = 1:100, y = 1:100) %>% ggplot(aes(x,y)) + geom_line()
 
 gg1 <- tibble(x = x) %>% ggplot(aes(x,y)) + geom_line() 
 gg1
-ggsave("figs/gg1.png", gg1)
+ggsave(here("figs","gg1.png"), gg1)
 
-write_rds(gg1, "data/gg1.rds")
+write_rds(gg1, here("data", "gg1.rds"))
 
 
 #### 3. Nombrar Variabes               ####
@@ -101,7 +102,7 @@ x <- tibble(dir = dir("code"))
 #        resultados_terreno_1, result.terr.2, result_terreno_3 
 #        resultados_terreno_1, resultados_terreno_2, resultados_terreno_3
 
-# Siempre en minÃºsculas
+# Siempre en minúsculas
 #        resultados_terreno_1, RESULTADOS_TERRENO_2, Resultados_Terreno_3
 #        resultados_terreno_1, resultados_terreno_2, resultados_terreno_3
 
@@ -125,7 +126,7 @@ t %>% select(starts_with("resultados"))
 
 
 
-# TambiÃ©n aplica a nombres de archivos de codigo
+# También aplica a nombres de archivos de codigo
 
 library(magrittr)
 library(dplyr)
