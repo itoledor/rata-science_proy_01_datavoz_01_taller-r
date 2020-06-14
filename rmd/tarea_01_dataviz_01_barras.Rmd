@@ -1,0 +1,218 @@
+---
+title: "Taller de R: Importación y Visualización de Datos"
+author: "Ignacio Toledo"
+date: "12-06-2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ejercicio: Importar y Visualizar Datos de la Encuesta CEP
+
+Lo primero que tienes que hacer es descargar la base de datos CEP de este [link](https://www.cepchile.cl/cep/site/edic/base/port/encuestasCEP.html) y abrir la base en formato *spss*, *excel* y *csv*. Como la base ya viene en *spss*, tendrás que transformarlo en archivo *excel* y *csv*.
+
+El ejercicio consiste en abrir bases de datos en R. El siguiente paso será mostrar cuáles son las variables que tiene la base de datos y a que clase pertenencen.
+
+Y por último mostrar alguna variable que encuentres interesante de visualizar mediante ggplot (`geom_point`, `geom_bar` (fill,stack y dodge),`geom_errorbar` (que muestra los intervalos de confianza), pueden mostrarlo mediante un gráfico o mediante distintas formas de visualizar el mismo dato. Ver si existen variables banner para realizar gráficos cruce y graficarlos. 
+
+## 1. Importación de los Datos
+
+Luego de descargar el archivo `encuesta_cep84_dic2019.zip` en la carpeta `raw` de tu proyecto, puedes descomprimir el archivo en la misma carpeta. Tu directorio `raw` debiese verse algo así:
+
+```{r message = FALSE, warning = FALSE}
+library(here)
+dir(here("raw"))
+dir(here("raw", "encuesta_cep84_dic2019"))
+```
+
+Puedes ver que el archivo viene en el formato que utiliza el software *spss*, es decir que tiene extensión `.sav`. Para importar este tipo de archivos utilizarás el paquete `{haven}` y para manipular la base de datos, el paquete `{dplyr}` 
+
+```{r message = FALSE}
+library(haven)
+library(dplyr)
+
+datos_cep <- here("raw", "encuesta_cep84_dic2019", "Encuesta CEP 84 Dic 2019 v1.sav") # Dirección del archivo
+datos_cep <- datos_cep %>% read_sav()                                                 # Leer el archivo
+```
+
+Listo! Ya puedes comenzar a explorar la base de datos. Primero veamos cuántas filas y cuántas columnas tiene el `data.frame` usando `nrow` y `ncol`.
+Podrás ver que son bastantes variables (columnas) por lo que talvez usar `str` o `summary` no sea muy útil.
+
+```{r message = FALSE}
+library(magrittr)
+
+datos_cep %>% nrow()                                                                  # ¿Cuántas filas tiene?
+datos_cep %>% ncol()                                                                  # ¿Cuántas variables tiene?
+datos_cep %>% names %>% head(60)                                                      # ¿Cómo se llaman?
+datos_cep %>% use_series(SV_1) %>% class                                              # ¿Qué clase la variable?                     
+datos_cep %>% use_series(SV_1) %>% typeof                                             # ¿Qué tipo de dato es?                     
+datos_cep %>% use_series(SV_1) %>% attributes                                         # ¿Qué atributos tiene?                     
+datos_cep %>% use_series(SV_1) %>% attr("label")                                      # ¿Cuál es la pregunta?                     
+datos_cep %>% use_series(SV_1) %>% attr("labels")                                     # ¿Cuál es la respuesta?                     
+datos_cep                                                                             # Ver las 10 primeras filas
+```
+
+## 2. Visualización de los Datos: Variable "Satisfacción con la vida"
+
+Como ejemplo usaré la pregunta sobre satisfacción con la vida (`SV_1`), con esta variable mostraré distintas visualizaciones. Tu puedes usar la misma variable si así lo queires, pero te recomiendo fuertemente que intentes con una variable distina.
+
+Según el Manual de Usuario de la Encuesta CEP, el fraseo de la pregunta es el siguiente:
+>Considerando todas las cosas, ¿cuán satisfecho está usted con su vida en este momento? Por favor use esta tarjeta en que 1 significa que usted está “totalmente insatisfecho” y 10 significa que usted está “totalmente satisfecho”. ¿Dónde se ubicaría usted?
+
+Las respuesta van del 1 al 10, donde 1 es "Totalmente insatisfecho" y 10, "Totalmente satisfecho". Adicionalmente están las opciones 88 "No sabe" y 99 "No contesta".
+
+Debido a que es una de las visualizaciones que más utilizamos, comenzaré explicando cómo generar gráficos de barra y sus distintos componentes, particularmente las variables estéticas y las posiciones. 
+
+### Definiendo las variables estéticas
+
+#### La variable estética `x`
+
+La definición mínima necesaria para poder generar un gráfico de barras es la variable `x`, que corresponde al eje horizontal. Una vez definiendo esta variable estética podemos realizar un gráfico de barra usando la geometría `geom_bar()`. La altura de cada barra (la variable `y`) corresponde al número de casos para cada valor de `x`, esta se calcula de forma automática. Algo parecido se logra con la geometría `geom_histogram()` pero con la diferencia de que el histograma funciona solo cuando la variable `x` es continua, mientras que `geom_bar()` funciona tanto con variables continuas y como discretas.
+
+Para este ejemplo utilizamos la función `as.factor` para transformar los valores de la variable "Satisfacción de la Vida" (`SV_1`) a variable categórica. **Intenta ver que sucede si omites esta función. ¿Qué diferencias puedes notar? Intenta también usando `geom_histogram()` **
+
+```{r}
+library(ggplot2)
+
+gg_sv1_bar <- datos_cep  %>% ggplot() 
+gg_sv1_bar <- gg_sv1_bar %+% aes(x = SV_1 %>% as.factor)
+gg_sv1_bar <- gg_sv1_bar %+% geom_bar()
+gg_sv1_bar <- gg_sv1_bar %+% labs(title = "Satisfacción con la Vida")
+gg_sv1_bar <- gg_sv1_bar %+% labs(subtitle = "geom_bar()")
+gg_sv1_bar <- gg_sv1_bar %+% labs(x = "nivel de satisfacción")
+gg_sv1_bar <- gg_sv1_bar %+% labs(y = "frecuencia")
+gg_sv1_bar
+
+```
+#### La variable estética `y`
+
+Hasta el momento hemos logrado visualizar la frecuencia de cada respuesta, sin embargo la función detrás del conteo solo considera el número de casos para cada valor de `x`. Cuando trabajamos con bases ponderadas esta opción no nos sirve ya que necesitamos realizar un conteo tomando en cuenta los ponderadores.
+La solución es generar el conteo ponderado antes de llamar a la función `ggplot()`. Para esto necesitamos llamar a la función `count()`, esta función realiza el conteo del número de casos para cada valor de la variable que queramos (en nuestro caso `SV_1`) y además da la opción de agregar los ponderadores usando el argumento `wt`. **Intenta ver que sucede si omites este argumento. ¿Qué diferencias puedes notar?**
+
+```{r}
+datos_cep %>% 
+  count(SV_1, wt = PONDERADOR) 
+```
+El resultado de la función `count` es una nueva base que tiene tantas filas como valores tiene la variable `SV_1` y dos columnas: la primera con el valor de `SV_1` y la segunda con el valor del conteo (el nombre es `n` por defecto, pero se puede asignar otro nombre especificando el argumento `name` de la siguiente manera `count(SV_1, wt = PONDERADOR, name = "conteo_ponderado")`). **Inténtalo**
+
+Ahora tenemos dos variables, `SV_1` que será nuestra variable `x` y `n` que será nuestra variable `y` (la que determinará el alto de las barras) para poder generar la visualizavión necesitaremos la función `geom_col()`.
+
+La diferencia entre `geom_bar()` y `geom_col()`, es que `geom_bar()` solo requiere la variable `x`, la variable `y` es calcualda de forma automática, mientras que `geom_col()` requiere que se definan ambas variables `x` e `y`.
+
+A continuación podrás ver el nuevo gráfico considerando el ponderador, ¿Puedes notar la diferencia con el gráfico anterior?
+**Intenta omitiendo el argumento `wt` en la función `count` ¿Que observas al comparar ambos gráficos?**
+
+```{r}
+
+datos_sv1_wt <- datos_cep    %>% count(SV_1, wt = PONDERADOR) 
+gg_sv1_col_1 <- datos_sv1_wt %>% ggplot() 
+gg_sv1_col_1 <- gg_sv1_col_1 %+% aes(x = SV_1 %>% as.factor, y = n)
+gg_sv1_col_1 <- gg_sv1_col_1 %+% geom_col()
+gg_sv1_col_1 <- gg_sv1_col_1 %+% labs(title = "Satisfacción con la Vida")
+gg_sv1_col_1 <- gg_sv1_col_1 %+% labs(subtitle = "count() + geom_col()")
+gg_sv1_col_1 <- gg_sv1_col_1 %+% labs(x = "nivel de satisfacción")
+gg_sv1_col_1 <- gg_sv1_col_1 %+% labs(y = "frecuencia")
+
+library(patchwork)             # Permite sumar gráficos
+gg_sv1_bar + gg_sv1_col_1
+
+```
+
+#### La variable estética `fill`
+
+La variable `fill` determina el color de relleno de los polígonos que se estén graficando. En el contexto de un gráfico con geometría `geom_col()` determina el color de las barras. Esto permite visualizar información de una tercera variable adicional a `x` e `y`. Cuando `fill` sea definida por una variable numérica, el resultado será una escala de colores continua, en el caso de que sea definida por una variable categórica (por ejemplo, una variable clase factor) el resultado será una escala de colores discreta.
+
+A continuación haremos un gráficos de barras usando las mismas variables `x` e `y` que en el gráfico anterior, pero definiendo `fill` como la variable `DS_P1` que corresponde, según el manual al sexo de la persona encuestada. Utilizamos la función `as.factor()` para transformar el sexo a una variable categórica. **Intenta omitir esta función y observa las diferencias ¿El resultado es una escala continua o discreta?**
+
+```{r}
+
+datos_sv1_wt <- datos_cep    %>% count(SV_1, DS_P1, wt = PONDERADOR)                            # Agragamos DS_P1
+gg_sv1_col_2 <- datos_sv1_wt %>% ggplot() 
+gg_sv1_col_2 <- gg_sv1_col_2 %+% aes(x = SV_1 %>% as.factor, y = n, fill = DS_P1 %>% as.factor) # Agregamos fill
+gg_sv1_col_2 <- gg_sv1_col_2 %+% geom_col()
+gg_sv1_col_2 <- gg_sv1_col_2 %+% labs(title = "Satisfacción con la Vida")
+gg_sv1_col_2 <- gg_sv1_col_2 %+% labs(subtitle = "count() + aes(fill) + geom_col()")
+gg_sv1_col_2 <- gg_sv1_col_2 %+% labs(x = "nivel de satisfacción")
+gg_sv1_col_2 <- gg_sv1_col_2 %+% labs(y = "frecuencia")
+gg_sv1_col_2 <- gg_sv1_col_2 %+% labs(fill = "sexo")                                            # Agregamos fill
+
+gg_sv1_col_1 + gg_sv1_col_2
+
+```
+
+### Definiendo la posición de las barras
+
+Al utilizar la variable estética `fill`, ya sea usando la geometría `geom_bar()` o `geom_col()`, la posición por defecto de las barras (de distinto color) es estar apiladas una sobre otra, a esta posición se le llama `stack`. Existen otras posiciones posibles como `dodge` y `fill`, que las revisaremos a continuación.
+
+#### Posición `stack`
+
+Com venía diciendo, `stack` es la posición por defecto y sirve para ver cómo el valor de la variable `y` se divide entre dos o más categorías. Esta posición conserva la altura total de cada barra, es decir que permite ver la distribución de `y` sobre `x`, y al mismo tiempo como el valor de `y` se divide en las distintas categorías de `fill`, para cada valor de `x`.
+
+El resultado de usar la posición `stack` es el mismo que obtuvimos en el gráfico anterior.
+
+```{r}
+datos_sv1_wt <- datos_cep    %>% count(SV_1, DS_P1, wt = PONDERADOR)                             
+gg_sv1_col_3 <- datos_sv1_wt %>% ggplot() 
+gg_sv1_col_3 <- gg_sv1_col_3 %+% aes(x = SV_1 %>% as.factor, y = n, fill = DS_P1 %>% as.factor)  
+gg_sv1_col_3 <- gg_sv1_col_3 %+% geom_col(position = "stack")                             # Agregamos la posición
+gg_sv1_col_3 <- gg_sv1_col_3 %+% labs(title = "Satisfacción con la Vida")
+gg_sv1_col_3 <- gg_sv1_col_3 %+% labs(subtitle = "count() + aes(fill) + geom_col(position = 'stack')")
+gg_sv1_col_3 <- gg_sv1_col_3 %+% labs(x = "nivel de satisfacción")
+gg_sv1_col_3 <- gg_sv1_col_3 %+% labs(y = "frecuencia")
+gg_sv1_col_3 <- gg_sv1_col_3 %+% labs(fill = "sexo")                                           
+gg_sv1_col_3
+
+```
+
+#### Posición `dodge`
+
+Al usar la posición `stack` las barras correspondientes a las categorías de `fill` estaba apiladas una sobre otra. En cambio al usar la posición `dodge` las barras de cada categoría de `fill` se encuentran una al lado de la otra y cada barra parte desde el cero. Esta posición permite comparar visualmente el valor de la variable `y` entre las categorías de la variable `fill`. 
+
+Usando `dodge` es más fácil determinar si `y` (el conteo ponderado en nuestro ejemplo) es mayor entre hombres o mujeres que cuando las barras se encuentran apiladas..
+
+
+```{r}
+datos_sv1_wt <- datos_cep    %>% count(SV_1, DS_P1, wt = PONDERADOR)                             
+gg_sv1_col_4 <- datos_sv1_wt %>% ggplot() 
+gg_sv1_col_4 <- gg_sv1_col_4 %+% aes(x = SV_1 %>% as.factor, y = n, fill = DS_P1 %>% as.factor)  
+gg_sv1_col_4 <- gg_sv1_col_4 %+% geom_col(position = "dodge")                             # Agregamos la posición
+gg_sv1_col_4 <- gg_sv1_col_4 %+% labs(title = "Satisfacción con la Vida")
+gg_sv1_col_4 <- gg_sv1_col_4 %+% labs(subtitle = "count() + aes(fill) + geom_col(position = 'dodge')")
+gg_sv1_col_4 <- gg_sv1_col_4 %+% labs(x = "nivel de satisfacción")
+gg_sv1_col_4 <- gg_sv1_col_4 %+% labs(y = "frecuencia")
+gg_sv1_col_4 <- gg_sv1_col_4 %+% labs(fill = "sexo")                                           
+
+gg_sv1_col_4
+
+```
+
+#### Posición `fill`
+
+Ojo! no es lo mismo que la variable estética `fill`. Lo que hace la posición `fill` es normalizar la posición `stack` por el valor total de `y` para cada categoría de `x`, el resultado son barras apiladas una sobre otra pero donde el valor total siempre suma 1, rellenando el espacio del eje `y`. Es ideal para poder visualizar proporciones en casos donde el valor total de `y` no es tan relevante.
+
+
+```{r}
+datos_sv1_wt <- datos_cep    %>% count(SV_1, DS_P1, wt = PONDERADOR)                             
+gg_sv1_col_5 <- datos_sv1_wt %>% ggplot() 
+gg_sv1_col_5 <- gg_sv1_col_5 %+% aes(x = SV_1 %>% as.factor, y = n, fill = DS_P1 %>% as.factor)  
+gg_sv1_col_5 <- gg_sv1_col_5 %+% geom_col(position = "fill")                              # Agregamos la posición
+gg_sv1_col_5 <- gg_sv1_col_5 %+% labs(title = "Satisfacción con la Vida")
+gg_sv1_col_5 <- gg_sv1_col_5 %+% labs(subtitle = "count() + aes(fill) + geom_col(position = 'fill')")
+gg_sv1_col_5 <- gg_sv1_col_5 %+% labs(x = "nivel de satisfacción")
+gg_sv1_col_5 <- gg_sv1_col_5 %+% labs(y = "frecuencia")
+gg_sv1_col_5 <- gg_sv1_col_5 %+% labs(fill = "sexo")                                           
+gg_sv1_col_5
+
+```
+
+```
+
+
+
+
+
+
+
+
